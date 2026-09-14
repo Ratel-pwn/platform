@@ -89,6 +89,41 @@ describe('authenticated conversion route', () => {
     expect((await request()).status).toBe(413)
     expect(mockStorage.read).not.toHaveBeenCalled()
   })
+  it('completes HTML conversion while a PDF conversion is stalled', async () => {
+    let releasePdf!: (value: Buffer) => void
+    let markStarted!: () => void
+    const started = new Promise<void>((resolve) => { markStarted = resolve })
+    jest.mocked(convertToPdf).mockImplementationOnce(async () => await new Promise<Buffer>((resolve) => {
+      releasePdf = resolve
+      markStarted()
+    }))
+    const pdf = request()
+    await started
+    let deadline: ReturnType<typeof setTimeout> | undefined
+    try {
+      const html = await Promise.race([
+        request('?format=html'),
+        new Promise<never>((_resolve, reject) => {
+          deadline = setTimeout(() => reject(new Error('HTML is blocked by PDF conversion')), 1000)
+        })
+      ])
+      expect(html.status).toBe(200)
+      expect((await html.json()).contentType).toBe('text/html')
+    } finally {
+      clearTimeout(deadline)
+      releasePdf(Buffer.from('%PDF-fixture'))
+      await pdf
+    }
+  })
+  it.each(['', '?format=html'])('preserves oversized legacy HTML conversion for %s', async (query) => {
+    size = 26 * 1024 * 1024
+    mockStorage.read.mockResolvedValue([Buffer.alloc(size)])
+    const response = await request(query)
+    expect(response.status).toBe(200)
+    expect((await response.json()).contentType).toBe('text/html')
+    expect(mockStorage.read).toHaveBeenCalledTimes(1)
+    expect(convertToPdf).not.toHaveBeenCalled()
+  })
   it('does not cache failed conversions and permits retry', async () => {
     jest.mocked(convertToPdf).mockRejectedValueOnce(new Error('converter failed'))
     expect((await request()).status).toBe(500)

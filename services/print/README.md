@@ -38,10 +38,12 @@ documents may fail within these limits; users can retry or download the original
   unchanged. Cached data lives in the same workspace storage as the source.
   Source changes trigger new previews. Old derived blobs follow the deployment's
   existing storage retention policy; this change does not add automatic cleanup.
-- Each Print process runs one conversion and queues at most four more jobs.
+- Each Print process runs one PDF conversion and queues at most four more PDF jobs.
   Requests for the same workspace/source version share a job. Queue overflow
   returns 503. Each PDF conversion has a 60 second deadline; waiting for queued
-  jobs adds to that time. Input is limited to 25 MiB and PDF output to 50 MiB.
+  jobs adds to that time. PDF conversion input is limited to 25 MiB and output to
+  50 MiB. HTML conversion runs independently of this queue and retains its existing
+  behavior without the PDF input limit.
 - Conversion failure shows retry and original download controls. Navigating away
   cancels the browser request; a conversion already running may finish and cache
   its result for the next viewer.
@@ -63,7 +65,8 @@ the failure state rather than requesting a password.
 ## Validation
 
 Focused Jest tests cover conversion limits, timeouts, output validation, queue
-coalescing, authentication, cache separation, source versions and legacy HTML.
+coalescing, authentication, cache separation, source versions and legacy HTML,
+including large HTML sources and HTML conversion while a PDF job is stalled.
 Client tests cover result negotiation and request errors. No full project build
 is required for these targeted checks.
 

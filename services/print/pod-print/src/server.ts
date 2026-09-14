@@ -178,7 +178,7 @@ export function createServer (
   allowedHostnames: string[]
 ): { app: Express, close: () => void } {
   const storageAdapter = buildStorageFromConfig(storageConfig)
-  const previewQueue = createPreviewQueue()
+  const pdfPreviewQueue = createPreviewQueue()
   const measureCtx = initStatisticsContext('print', {
     factory: () =>
       createOpenTelemetryMetricsContext(
@@ -270,8 +270,7 @@ export function createServer (
       const convertStats = await storageAdapter.stat(ctx, wsUuid, convertId)
 
       if (convertStats === undefined) {
-        if (stat.size > maxDocumentBytes) throw new ApiError(413, 'Document exceeds the 25 MiB preview limit')
-        await previewQueue.run(JSON.stringify([wsUuid.uuid, wsUuid.dataId, convertId]), async () => {
+        const convert = async (): Promise<void> => {
           // Another request may have filled the cache while this job waited for the converter.
           if (await storageAdapter.stat(ctx, wsUuid, convertId) !== undefined) return
           const originalFile = await storageAdapter.read(ctx, wsUuid, file)
@@ -281,12 +280,20 @@ export function createServer (
           }
 
           const input = Buffer.concat(originalFile as any)
-          if (input.length > maxDocumentBytes) throw new ApiError(413, 'Document exceeds the 25 MiB preview limit')
+          if (format === 'pdf' && input.length > maxDocumentBytes) {
+            throw new ApiError(413, 'Document exceeds the 25 MiB preview limit')
+          }
           const output = format === 'pdf'
             ? await ctx.with('convertToPdf', {}, () => convertToPdf(input, config.GotenbergUrl))
             : Buffer.from(await ctx.with('convertToHtml', {}, () => convertToHtml(input)))
           await storageAdapter.put(ctx, wsUuid, convertId, output, contentType, output.length)
-        })
+        }
+        if (format === 'pdf') {
+          if (stat.size > maxDocumentBytes) throw new ApiError(413, 'Document exceeds the 25 MiB preview limit')
+          await pdfPreviewQueue.run(JSON.stringify([wsUuid.uuid, wsUuid.dataId, convertId]), convert)
+        } else {
+          await convert()
+        }
       }
 
       res.contentType('application/json')
