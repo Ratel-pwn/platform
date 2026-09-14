@@ -66,6 +66,7 @@ export async function convertForPreview (
   }
 
   const url = new URL(`${getPrintBaseURL()}/convert/${file}`)
+  url.searchParams.set('format', 'preview')
   const response = await fetch(url, {
     method: 'GET',
     headers: {

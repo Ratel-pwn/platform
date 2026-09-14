@@ -35,7 +35,7 @@ describe('DOCX preview conversion', () => {
       contentType
     })
     const [url, options] = fetchMock.mock.calls[0]
-    expect(url.toString()).toBe('https://print.example/convert/source-id')
+    expect(url.toString()).toBe('https://print.example/convert/source-id?format=preview')
     expect(options).toMatchObject({
       method: 'GET',
       headers: { Authorization: 'Bearer workspace-token', Accept: 'application/json' },
