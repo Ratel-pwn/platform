@@ -68,6 +68,7 @@
   export let shouldSaveDraft: boolean = false
   export let attachments: IdMap<Attachment> = new Map()
   export let loading = false
+  export let submitHandler: ((detail: { message: Markup, attachments: number }) => Promise<boolean>) | undefined = undefined
   export let focusIndex: number = -1
   export let autofocus = false
   export function submit (): void {
@@ -234,9 +235,16 @@
 
   async function saveAttachment (doc: Attachment): Promise<void> {
     if (!existingAttachments.includes(doc._id)) {
-      await client.addCollection(attachment.class.Attachment, space, objectId, _class, 'attachments', doc, doc._id)
-      newAttachments.delete(doc._id)
+      // Restored drafts may contain an attachment persisted before a failed
+      // message submission. The live query can still be catching up on reload.
+      const existing = await client.findOne(attachment.class.Attachment, { _id: doc._id })
+      if (existing === undefined) {
+        await client.addCollection(attachment.class.Attachment, doc.space, doc.attachedTo, doc.attachedToClass, 'attachments', doc, doc._id)
+      } else if (existing.attachedTo !== doc.attachedTo || existing.space !== doc.space) {
+        throw new Error('附件归属发生变化，请重新上传文件')
+      }
     }
+    newAttachments.delete(doc._id)
   }
 
   async function fileSelected (): Promise<void> {
@@ -329,18 +337,17 @@
     if (saved) {
       return
     }
+    // Propagate persistence failures to the submitting editor. Keep the
+    // remaining draft items available for retry after a partial save.
+    for (const id of Array.from(newAttachments)) {
+      const item = attachments.get(id)
+      if (item !== undefined) await saveAttachment(item)
+    }
+    for (const item of Array.from(removedAttachments)) {
+      await deleteAttachment(item)
+      removedAttachments.delete(item)
+    }
     saved = true
-    const limiter = new RateLimiter(10)
-    newAttachments.forEach((p) => {
-      const attachment = attachments.get(p)
-      if (attachment !== undefined) {
-        void limiter.add(() => saveAttachment(attachment))
-      }
-    })
-    removedAttachments.forEach((p) => {
-      void limiter.add(() => deleteAttachment(p))
-    })
-    await limiter.waitProcessing()
     newAttachments.clear()
     urlSet.clear()
     removedAttachments.clear()
@@ -352,6 +359,12 @@
     await createAttachments()
     loading = false
     dispatch('message', { message: event.detail, attachments: attachments.size })
+  }
+
+  async function submitMessage (message: Markup): Promise<boolean> {
+    // The caller validates first, then explicitly persists attachments and the
+    // message. Cancelled naming must leave the entire draft available.
+    return await submitHandler?.({ message, attachments: attachments.size }) ?? false
   }
 
   function updateLinkPreview (): void {
@@ -494,6 +507,7 @@
       {showActions}
       autofocus={autofocus ? 'end' : false}
       loading={loading || progress || loadingLinks}
+      submitHandler={submitHandler === undefined ? undefined : submitMessage}
       {boundary}
       {docClass}
       extraActions={[

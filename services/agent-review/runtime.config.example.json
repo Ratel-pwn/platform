@@ -1,0 +1,20 @@
+{
+  "huly": {
+    "url": "http://huly-review.local:18087",
+    "workspace": "填写浏览器地址中的工作区 URL 名称",
+    "pollIntervalMs": 5000,
+    "enabledChannels": []
+  },
+  "bots": {
+    "技术评估Agent": { "email": "填写机器人账号", "password": "填写本地密码" },
+    "方案Agent": { "email": "填写机器人账号", "password": "填写本地密码" },
+    "合同Agent": { "email": "填写机器人账号", "password": "填写本地密码" }
+  },
+  "references": {
+    "technical": ["D:/零律/企业内部知识库问答系统技术评估案例-v1.0.docx"],
+    "solution": ["D:/CodeRepository/Huly/方案编写参考.md"],
+    "contract": ["D:/零律/合同 skill/software-development-contract/SKILL.md", "D:/零律/合同 skill/software-development-contract/references/clause-decisions.md"]
+  },
+  "dataDir": "./data",
+  "maxConcurrency": 2
+}

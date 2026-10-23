@@ -1,0 +1,42 @@
+{
+  "name": "@hcengineering/agent-review",
+  "version": "0.1.0",
+  "private": true,
+  "main": "lib/index.js",
+  "types": "types/index.d.ts",
+  "scripts": {
+    "build": "compile",
+    "build:watch": "compile",
+    "test": "jest --passWithNoTests --silent",
+    "_phase:bundle": "rushx bundle",
+    "_phase:build": "compile transpile src",
+    "_phase:test": "jest --passWithNoTests --silent",
+    "_phase:validate": "compile validate",
+    "bundle": "node scripts/bundle.cjs",
+    "preflight": "node scripts/preflight.cjs"
+  },
+  "dependencies": {
+    "@earendil-works/pi-coding-agent": "1.1.0",
+    "@hcengineering/api-client": "workspace:^0.7.19",
+    "@hcengineering/activity": "workspace:^0.7.0",
+    "@hcengineering/attachment": "workspace:^0.7.0",
+    "@hcengineering/chunter": "workspace:^0.7.0",
+    "@hcengineering/contact": "workspace:^0.7.0",
+    "@hcengineering/core": "workspace:^0.7.26",
+    "@hcengineering/text": "workspace:^0.7.19",
+    "@hcengineering/text-core": "workspace:^0.7.19",
+    "@hcengineering/text-markdown": "workspace:^0.7.21",
+    "docx": "^9.5.1",
+    "mammoth": "^1.8.0",
+    "pdf-parse": "^1.1.1"
+  },
+  "devDependencies": {
+    "@hcengineering/platform-rig": "workspace:^0.7.21",
+    "@types/jest": "^29.5.5",
+    "@types/node": "^22.18.1",
+    "esbuild": "^0.25.10",
+    "jest": "^29.7.0",
+    "ts-jest": "^29.1.1",
+    "typescript": "^5.9.3"
+  }
+}

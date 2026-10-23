@@ -27,7 +27,7 @@
   import { addTxListener, getClient, removeTxListener } from '@hcengineering/presentation'
   import { ModernButton, Scroller } from '@hcengineering/ui'
   import { afterUpdate, onDestroy, onMount, tick } from 'svelte'
-  import { ChatMessage } from '@hcengineering/chunter'
+  import { ChatMessage, ThreadMessage } from '@hcengineering/chunter'
 
   import { ChannelDataProvider, MessageMetadata } from '../channelDataProvider'
   import chunter from '../plugin'
@@ -39,6 +39,7 @@
   import ActivityMessagesSeparator from './ChannelMessagesSeparator.svelte'
   import JumpToDateSelector from './JumpToDateSelector.svelte'
   import HistoryLoading from './LoadingHistory.svelte'
+  import { setReviewDemand } from '../reviewDemand'
 
   export let provider: ChannelDataProvider
   export let object: Doc
@@ -53,6 +54,10 @@
   export let withInput: boolean = true
   export let readonly: boolean = false
   export let onReply: ((message: ActivityMessage) => void) | undefined = undefined
+  export let reviewDemandRootId: Ref<ChatMessage> | undefined = undefined
+  export let reviewDemandTitle: string | undefined = undefined
+  export let reviewDemandInvalid = false
+  export let reviewDemandTitles: Record<string, string | undefined> = {}
 
   const minMsgHeightRem = 2
   const loadMoreThreshold = 200
@@ -361,7 +366,29 @@
       prevMetadata = metadata.find((_, index) => metadata[index + 1]?._id === message._id)
     }
 
-    return canGroupMessages(message, prevMessage ?? prevMetadata)
+    const previous = prevMessage ?? prevMetadata
+    if (previous === undefined) return false
+    const demandKey = (value: ActivityMessage): string => {
+      const thread = value as Partial<ThreadMessage>
+      if ((value as Partial<ChatMessage>).reviewDemandTitle !== undefined) return `demand:${value._id}`
+      if (thread.attachedToClass !== undefined) return `demand:${thread.attachedTo as string}`
+      return 'channel'
+    }
+    if (demandKey(message) !== demandKey(previous)) return false
+    return canGroupMessages(message, previous)
+  }
+
+  function demandId (message: ActivityMessage): Ref<ChatMessage> {
+    return ((message as Partial<ThreadMessage>).attachedTo ?? message._id) as Ref<ChatMessage>
+  }
+
+  function demandTitle (message: ActivityMessage): string | undefined {
+    return (message as Partial<ChatMessage>).reviewDemandTitle ?? reviewDemandTitles[demandId(message)]
+  }
+
+  function selectDemand (message: ActivityMessage): void {
+    const title = demandTitle(message)
+    if (title !== undefined) setReviewDemand({ channelId: object._id, rootId: demandId(message), title })
   }
 
   $: updateDownButtonVisibility($metadataStore, messages, scrollDiv)
@@ -663,6 +690,12 @@
         />
       {/if}
 
+      {#if demandTitle(message) !== undefined}
+        <button class="review-demand-badge" type="button" on:click={() => selectDemand(message)}>
+          【{demandTitle(message)}】
+        </button>
+      {/if}
+
       <ActivityMessagePresenter
         {doc}
         value={message}
@@ -686,6 +719,8 @@
       <HistoryLoading isLoading={$isLoadingMoreStore} />
     {/if}
     {#if !fixedInput && withInput && !readonly}
+      <slot name="composerHeader" />
+      {#key reviewDemandRootId ?? 'channel'}
       <ChannelInput
         {object}
         {readonly}
@@ -694,7 +729,11 @@
         {isThread}
         {autofocus}
         onKeyDown={handleKeyDown}
+        {reviewDemandRootId}
+        {reviewDemandTitle}
+        {reviewDemandInvalid}
       />
+      {/key}
     {/if}
   </BaseChatScroller>
   {#if !isThread && isLatestMessageButtonVisible}
@@ -711,6 +750,8 @@
 </div>
 
 {#if fixedInput && withInput && !readonly}
+  <slot name="composerHeader" />
+  {#key reviewDemandRootId ?? 'channel'}
   <ChannelInput
     {object}
     {readonly}
@@ -719,7 +760,11 @@
     {isThread}
     {autofocus}
     onKeyDown={handleKeyDown}
+    {reviewDemandRootId}
+    {reviewDemandTitle}
+    {reviewDemandInvalid}
   />
+  {/key}
 {/if}
 
 {#if readonly}
@@ -727,6 +772,16 @@
 {/if}
 
 <style lang="scss">
+  .review-demand-badge {
+    margin: 0 0.75rem 0.125rem;
+    padding: 0.125rem 0.375rem;
+    border: 0;
+    border-radius: 0.25rem;
+    color: var(--global-primary-Color);
+    background: var(--global-ui-BorderColor);
+    cursor: pointer;
+  }
+
   .selectedDate {
     position: absolute;
     top: 0;

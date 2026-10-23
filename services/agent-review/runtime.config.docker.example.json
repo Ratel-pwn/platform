@@ -1,0 +1,20 @@
+{
+  "huly": {
+    "url": "http://huly-review.local:18087",
+    "workspace": "填写浏览器地址中的工作区 URL 名称",
+    "pollIntervalMs": 5000,
+    "enabledChannels": []
+  },
+  "bots": {
+    "技术评估Agent": { "email": "填写机器人账号", "password": "填写本地密码" },
+    "方案Agent": { "email": "填写机器人账号", "password": "填写本地密码" },
+    "合同Agent": { "email": "填写机器人账号", "password": "填写本地密码" }
+  },
+  "references": {
+    "technical": ["/app/references/技术评估案例.docx"],
+    "solution": ["/app/方案编写参考.md"],
+    "contract": ["/app/references/software-development-contract/SKILL.md", "/app/references/software-development-contract/references/clause-decisions.md"]
+  },
+  "dataDir": "/app/data",
+  "maxConcurrency": 2
+}

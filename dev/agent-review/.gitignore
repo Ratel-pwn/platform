@@ -1,0 +1,10 @@
+huly.compose.local.json
+huly-source.local.json
+image-record.local.json
+huly-base.local.json
+huly-revision.local.txt
+*.local.log
+hosts-backup.local.txt
+hosts-status.local.txt
+test-accounts.local.json
+agent-process.local.json

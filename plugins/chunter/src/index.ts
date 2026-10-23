@@ -64,6 +64,8 @@ export interface ChatMessage extends ActivityMessage {
   attachments?: number
   editedOn?: Timestamp
   provider?: Ref<SocialChannelProvider>
+  /** Human-readable name for a document-review demand root. Only set on roots. */
+  reviewDemandTitle?: string
 }
 
 /**

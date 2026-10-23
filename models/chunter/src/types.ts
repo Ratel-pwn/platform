@@ -98,6 +98,10 @@ export class TChatMessage extends TActivityMessage implements ChatMessage {
 
   @Prop(TypeRef(contact.class.ChannelProvider), core.string.Object)
     provider?: Ref<SocialChannelProvider>
+
+  @Prop(TypeString(), chunter.string.Message)
+  @Index(IndexKind.FullText)
+    reviewDemandTitle?: string
 }
 
 @Model(chunter.class.ThreadMessage, chunter.class.ChatMessage)

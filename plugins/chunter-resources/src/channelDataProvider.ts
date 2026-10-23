@@ -40,6 +40,7 @@ export interface MessageMetadata {
   createdOn?: Timestamp
   modifiedOn: Timestamp
   createdBy?: PersonId
+  reviewDemandTitle?: string
 }
 
 interface Chunk {
@@ -73,6 +74,7 @@ export class ChannelDataProvider implements IChannelDataProvider {
   private readonly msgClass: Ref<Class<ActivityMessage>>
   private selectedMsgId: Ref<ActivityMessage> | undefined = undefined
   private tailStart: Timestamp | undefined = undefined
+  private demandRoots: Ref<Doc>[] = []
 
   public readonly metadataStore = writable<MessageMetadata[]>([])
   private readonly tailStore = writable<ActivityMessage[]>([])
@@ -141,6 +143,27 @@ export class ChannelDataProvider implements IChannelDataProvider {
     this.refsQuery.unsubscribe()
   }
 
+  /** Update the demand roots included in the channel feed. Replies remain native
+   * ThreadMessage documents and ordinary threads are not widened into demands. */
+  public setDemandRoots (roots: Array<Ref<Doc>>): void {
+    const next = [...new Set(roots)]
+    if (next.length === this.demandRoots.length && next.every((root) => this.demandRoots.includes(root))) return
+    this.demandRoots = next
+    this.metadataQuery.unsubscribe()
+    this.clearMessages()
+    this.metadataStore.set([])
+    void this.loadData()
+  }
+
+  private getAttachedToQuery (): Ref<Doc> | { $in: Ref<Doc>[] } {
+    return this.demandRoots.length > 0 ? { $in: [this.chatId as Ref<Doc>, ...this.demandRoots] } : this.chatId as Ref<Doc>
+  }
+
+  private getCollectionQuery (): string | { $in: string[] } | undefined {
+    if (this.collection == null) return undefined
+    return this.demandRoots.length > 0 ? { $in: [this.collection, 'replies'] } : this.collection
+  }
+
   public canLoadMore (mode: LoadMode, timestamp?: Timestamp): boolean {
     if (timestamp === undefined) {
       return false
@@ -198,9 +221,9 @@ export class ChannelDataProvider implements IChannelDataProvider {
     this.metadataQuery.query(
       this.msgClass,
       {
-        attachedTo: this.chatId,
+        attachedTo: this.getAttachedToQuery(),
         space: this.space,
-        ...(this.collection != null ? { collection: this.collection } : {})
+        ...(this.getCollectionQuery() !== undefined ? { collection: this.getCollectionQuery() } : {})
       },
       (res) => {
         this.updatesDates(res)
@@ -208,7 +231,16 @@ export class ChannelDataProvider implements IChannelDataProvider {
         void this.loadInitialMessages(undefined, loadAll)
       },
       {
-        projection: { _id: 1, _class: 1, space: 1, createdOn: 1, createdBy: 1, attachedTo: 1, modifiedOn: 1 },
+        projection: {
+          _id: 1,
+          _class: 1,
+          space: 1,
+          createdOn: 1,
+          createdBy: 1,
+          attachedTo: 1,
+          modifiedOn: 1,
+          reviewDemandTitle: 1
+        },
         sort: { createdOn: SortingOrder.Ascending }
       }
     )
@@ -284,9 +316,9 @@ export class ChannelDataProvider implements IChannelDataProvider {
     this.tailQuery.query(
       this.msgClass,
       {
-        attachedTo: this.chatId,
+        attachedTo: this.getAttachedToQuery(),
         space: this.space,
-        ...(this.collection != null ? { collection: this.collection } : {}),
+        ...(this.getCollectionQuery() !== undefined ? { collection: this.getCollectionQuery() } : {}),
         ...query,
         ...(this.tailStart !== undefined ? { createdOn: { $gte: this.tailStart } } : {})
       },
@@ -338,9 +370,9 @@ export class ChannelDataProvider implements IChannelDataProvider {
     let messages: ActivityMessage[] = await client.findAll(
       this.msgClass,
       {
-        attachedTo: this.chatId,
+        attachedTo: this.getAttachedToQuery(),
         space: this.space,
-        ...(this.collection != null ? { collection: this.collection } : {}),
+        ...(this.getCollectionQuery() !== undefined ? { collection: this.getCollectionQuery() } : {}),
         createdOn: equal
           ? isBackward
             ? { $lte: loadAfter }

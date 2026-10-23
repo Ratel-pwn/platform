@@ -1,0 +1,27 @@
+services:
+  agent-review:
+    build:
+      context: ../../services/agent-review
+      dockerfile: Dockerfile
+    container_name: huly-agent-review-local
+    restart: unless-stopped
+    extra_hosts:
+      - 'huly.local:host-gateway'
+      - 'huly-review.local:host-gateway'
+    volumes:
+      - agent-review-data:/app/data
+      - ../../services/agent-review/api.config.local.json:/app/api.config.local.json:ro
+      - ../../services/agent-review/runtime.config.local.json:/app/runtime.config.local.json:ro
+      - ../../方案编写参考.md:/app/方案编写参考.md:ro
+      - "D:/零律/企业内部知识库问答系统技术评估案例-v1.0.docx:/app/references/技术评估案例.docx:ro"
+      - "D:/零律/合同 skill/software-development-contract:/app/references/software-development-contract:ro"
+    networks:
+      - huly-agent-review
+
+volumes:
+  agent-review-data:
+    name: huly-agent-review-local-data
+
+networks:
+  huly-agent-review:
+    name: huly-agent-review-local

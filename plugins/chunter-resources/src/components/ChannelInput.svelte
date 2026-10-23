@@ -15,6 +15,7 @@
 <script lang="ts">
   import { ActivityExtension as ActivityExtensionComponent } from '@hcengineering/activity-resources'
   import { Class, Doc, Ref } from '@hcengineering/core'
+  import type { ChatMessage } from '@hcengineering/chunter'
   import activity, { ActivityExtension } from '@hcengineering/activity'
   import { getClient } from '@hcengineering/presentation'
   import { AnySvelteComponent, Icon, Label } from '@hcengineering/ui'
@@ -32,6 +33,9 @@
   export let isThread = false
   export let autofocus = true
   export let onKeyDown: ((e: KeyboardEvent) => void) | undefined = undefined
+  export let reviewDemandRootId: Ref<ChatMessage> | undefined = undefined
+  export let reviewDemandTitle: string | undefined = undefined
+  export let reviewDemandInvalid = false
 
   const client = getClient()
   const hierarchy = client.getHierarchy()
@@ -88,7 +92,7 @@
     <ActivityExtensionComponent
       kind="input"
       {extensions}
-      props={{ object, boundary, collection, autofocus, withTypingInfo: true, onKeyDown }}
+      props={{ object, boundary, collection, autofocus, withTypingInfo: true, onKeyDown, reviewDemandRootId, reviewDemandTitle, reviewDemandInvalid }}
     />
   </div>
 {:else}

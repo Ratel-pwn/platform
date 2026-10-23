@@ -51,6 +51,9 @@
   export let placeholder: IntlString | undefined = undefined
   export let extraActions: RefAction[] = []
   export let loading: boolean = false
+  // Callers with asynchronous validation/persistence must acknowledge success
+  // before the editor clears. Existing event-based callers keep their behavior.
+  export let submitHandler: ((message: Markup) => Promise<boolean>) | undefined = undefined
   export let focusable: boolean = false
   export let noborder: boolean = false
   export let boundary: HTMLElement | undefined = undefined
@@ -67,13 +70,35 @@
   let editor: TextEditor | undefined = undefined
 
   let isEmpty = true
+  let submitting = false
 
   $: setContent(content)
   $: devSize = $deviceInfo.size
   $: shrinkButtons = checkAdaptiveMatching(devSize, 'sm')
 
   $: isEmptyContent = isEmpty || isEmptyMarkup(content)
-  $: canSubmit = (haveAttachment || !isEmptyContent) && !loading
+  $: canSubmit = (haveAttachment || !isEmptyContent) && !loading && !submitting
+
+  async function handleContent (event: CustomEvent<Markup>): Promise<void> {
+    if (!canSubmit) return
+    if (submitHandler === undefined) {
+      dispatch('message', event.detail)
+      content = EmptyMarkup
+      editor?.clear?.()
+      return
+    }
+    submitting = true
+    editor?.setEditable(false)
+    try {
+      if (await submitHandler(event.detail)) {
+        content = EmptyMarkup
+        editor?.clear?.()
+      }
+    } finally {
+      submitting = false
+      editor?.setEditable(true)
+    }
+  }
 
   function setContent (content: Markup): void {
     editor?.setContent(content)
@@ -162,13 +187,7 @@
       bind:this={editor}
       {autofocus}
       {boundary}
-      on:content={(ev) => {
-        if (canSubmit) {
-          dispatch('message', ev.detail)
-          content = EmptyMarkup
-          editor?.clear?.()
-        }
-      }}
+      on:content={handleContent}
       on:blur={() => {
         focused = false
         dispatch('blur')

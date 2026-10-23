@@ -2337,6 +2337,11 @@
       "shouldPublish": false
     },
     {
+      "packageName": "@hcengineering/agent-review",
+      "projectFolder": "services/agent-review",
+      "shouldPublish": false
+    },
+    {
       "packageName": "@hcengineering/ai-bot",
       "projectFolder": "plugins/ai-bot",
       "shouldPublish": false

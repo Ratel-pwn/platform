@@ -1,0 +1,9 @@
+{
+  "provider": "填写服务商",
+  "apiType": "openai-completions",
+  "baseUrl": "https://example.invalid/v1",
+  "model": "填写模型名",
+  "apiKey": "",
+  "timeoutMs": 120000,
+  "maxOutputTokens": 12000
+}
